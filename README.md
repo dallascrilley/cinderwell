@@ -150,12 +150,16 @@ $ git clone <this-repo> cinderwell && cd cinderwell
 
 $ python3 -m unittest discover -s tests -t tests
 ....................................................................
-Ran 340 tests in 42.070s
+Ran 340 tests in 5.740s
 
-OK (skipped=3)
+OK (skipped=4)
 
 $ python3 examples/mock_teardown.py        # the receipt above
 ```
+
+Four skips in a bare checkout, and each says why: three cloud-init template
+tests skip without a YAML parser installed, and one contract test skips without
+the `hcloud` CLI. Install either and they run. Nothing else is conditional.
 
 Install the CLI:
 
@@ -361,8 +365,9 @@ Things this repository does **not** do, stated plainly:
   There is no systemd unit. The reaper logic itself is portable; only the
   installer is not.
 - **Cloud-init and the host side are not exercised end to end here.** The
-  template ships and is rendered under test, but nothing in this repository
-  boots a machine to confirm what it does on arrival.
+  template ships and is rendered under test, and three tests parse the rendered
+  YAML when a parser is installed — but nothing in this repository boots a
+  machine to confirm what it does on arrival.
 - **`approved_by` is attribution, not authentication.** It is self-asserted.
   An approval proves it was bound to one reviewed plan; it does not prove a
   human was present. The terminal path provides presence; the artifact path
