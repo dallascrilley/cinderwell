@@ -971,7 +971,7 @@ def _emit(value: Any) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="cinderwell lifecycle",
-        description="Read-only planning for Cinderwell hosts. This "
+        description="Read-only planning for Matchbox hosts. This "
                     "command creates and deletes nothing.")
     parser.add_argument("--config", type=Path, default=None,
                         help="configuration file (default: "
