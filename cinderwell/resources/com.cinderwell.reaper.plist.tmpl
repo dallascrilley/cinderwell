@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.cinderwell.reaper</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>{{PROGRAM}}</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>{{INTERVAL_SECONDS}}</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>{{LOG_PATH}}</string>
+  <key>StandardErrorPath</key>
+  <string>{{LOG_PATH}}</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

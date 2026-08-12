@@ -1,0 +1,121 @@
+#cloud-config
+# Ephemeral factory host bootstrap (unit S3).
+#
+# Placeholders are substituted by scripts/hybrid/provision.py:
+#   {{RUN_ID}}          purpose-specific run identifier
+#   {{HOSTNAME}}        unique per-run Tailscale node name
+#   {{TAILSCALE_TAG}}   approved ACL tag
+#   {{TAILSCALE_KEY}}   single-use ephemeral auth key, 600s expiry
+#
+# The auth key is written to a mode-0600 file and shredded after use. Shell
+# tracing is never enabled, and the key is never passed as a command argument
+# where any local user could read it from /proc.
+#
+# Stated honestly: Hetzner user-data remains provider-accessible for the life of
+# the server, so this file does not erase the key from the provider. The key's
+# safety rests on being single-use, tag-scoped, 600-second-lived, and revocable.
+
+hostname: {{HOSTNAME}}
+preserve_hostname: false
+
+write_files:
+  - path: /etc/factory-run-id
+    permissions: "0644"
+    content: |
+      {{RUN_ID}}
+  - path: /run/tailscale-bootstrap.key
+    permissions: "0600"
+    owner: root:root
+    content: {{TAILSCALE_KEY}}
+  - path: /usr/local/sbin/factory-bootstrap.sh
+    permissions: "0700"
+    owner: root:root
+    content: |
+      #!/usr/bin/env bash
+      # No `set -x` anywhere: tracing would print the auth key to the console.
+      set -euo pipefail
+      umask 022
+
+      KEY_FILE=/run/tailscale-bootstrap.key
+
+      curl -fsSL https://tailscale.com/install.sh | sh
+
+      # `--auth-key file:` makes tailscaled read the key from disk. Passing the
+      # value inline, including via "$(cat ...)", would place it in this
+      # process's argv where any local user could read it from /proc.
+      # Requires Tailscale 1.36 or newer.
+      tailscale up \
+        --auth-key "file:${KEY_FILE}" \
+        --advertise-tags "{{TAILSCALE_TAG}}" \
+        --hostname "{{HOSTNAME}}" \
+        --ssh=false \
+        --accept-routes=false
+
+      # Wait for an authenticated backend before declaring the node joined.
+      backend=unknown
+      for _ in $(seq 1 60); do
+        backend="$(tailscale status --json \
+          | python3 -c 'import json,sys; print(json.load(sys.stdin)["BackendState"])')"
+        [ "$backend" = "Running" ] && break
+        sleep 2
+      done
+
+      # Check for key residue BEFORE shredding, so the pattern can be supplied
+      # with `grep -f` from the key file itself. Using `grep -F "$key"` would put
+      # the key back into argv, which is the exact exposure being avoided.
+      scrub_status=CLEAN
+      for candidate in /var/log/cloud-init.log /var/log/cloud-init-output.log \
+                       /var/lib/cloud/instance/user-data.txt; do
+        [ -f "$candidate" ] || continue
+        if grep -qFf "$KEY_FILE" "$candidate" 2>/dev/null; then
+          scrub_status=RESIDUE
+        fi
+      done
+
+      shred -u "$KEY_FILE" 2>/dev/null || rm -f "$KEY_FILE"
+      [ -e "$KEY_FILE" ] && scrub_status=KEY_FILE_PRESENT
+
+      # The operator reads these lines from the Hetzner web console for the exact
+      # state-recorded server ID. This is the anti-MITM trust channel; an
+      # ssh-keyscan alone is not one, because a scan cannot tell you whether you
+      # are talking to the machine you just created.
+      fingerprint="$(ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub | awk '{print $2}')"
+      # The same key, in hexadecimal. base64 is compact but its alphabet is full
+      # of glyphs an 80x25 console cannot distinguish: l/1/I and O/0 all
+      # collide. A live read produced a one-character mismatch that was
+      # indistinguishable from an attack, and the tempting "fix" -- copying the
+      # value the host reports -- would silently delete the whole guarantee.
+      # Hex has ten digits and six letters, none of which collide.
+      hexprint="$(awk '{print $2}' /etc/ssh/ssh_host_ed25519_key.pub \
+                  | base64 -d | sha256sum | awk '{print $1}')"
+      {
+        echo "FACTORY-RUN-ID {{RUN_ID}}"
+        echo "FACTORY-HOSTKEY ${fingerprint}"
+        echo "FACTORY-HOSTKEY-HEX ${hexprint}"
+        echo "FACTORY-KEY-SCRUB ${scrub_status}"
+        echo "FACTORY-TAILSCALE ${backend}"
+      } > /dev/console
+
+      # ...and again where it will still be there later. Writing only to
+      # /dev/console was a one-shot: the lines scroll past, and since Linux 5.9
+      # the VT has no scrollback at all, so Shift+PageUp recovers nothing. On the
+      # first live run the console had already reached the login prompt by the
+      # time it was opened, which made the host permanently untrustable and fit
+      # only for destruction.
+      #
+      # /etc/issue is rendered by getty above every login prompt, on every tty,
+      # for as long as the host lives. Same value, same channel -- the provider's
+      # out-of-band console -- but readable whenever somebody looks rather than
+      # only during the seconds it was printed.
+      {
+        echo ""
+        echo "FACTORY-RUN-ID {{RUN_ID}}"
+        echo "FACTORY-HOSTKEY ${fingerprint}"
+        echo "FACTORY-HOSTKEY-HEX ${hexprint}"
+        echo "FACTORY-KEY-SCRUB ${scrub_status}"
+        echo "FACTORY-TAILSCALE ${backend}"
+        echo ""
+      } >> /etc/issue
+
+runcmd:
+  - [ /usr/local/sbin/factory-bootstrap.sh ]

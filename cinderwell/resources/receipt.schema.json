@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cinderwell.dev/schema/receipt.schema.json",
+  "title": "Hybrid ephemeral server lifecycle receipt",
+  "description": "Sanitized evidence for one lifecycle run. Contains no credentials, no private network identifiers, and no raw command output. Absent evidence is NOT_VERIFIED, never PASS.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "recorded_at",
+    "operation",
+    "results",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,62}$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operation": {
+      "enum": [
+        "inventory",
+        "status",
+        "plan",
+        "validate",
+        "up",
+        "abort-up",
+        "down"
+      ]
+    },
+    "config_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "plan_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "authority": {"$ref": "#/definitions/authority"},
+    "spend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "hourly",
+        "monthly",
+        "within_envelope"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "hourly": {
+          "type": "number",
+          "minimum": 0
+        },
+        "monthly": {
+          "type": "number",
+          "minimum": 0
+        },
+        "within_envelope": {
+          "type": "boolean"
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_VERIFIED"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "NOT_VERIFIED"
+      ]
+    }
+  },
+  "definitions": {
+    "authority": {
+      "description": "The record of *how* a mutation was authorized, written into state and into receipts. This definition is the single source of truth for that shape: state.schema.json and receipt.schema.json carry copies, and a test asserts all three are byte-identical, because a contract stated twice is a contract that drifts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "plan_hash", "operation"],
+      "properties": {
+        "kind": {
+          "enum": ["approval", "terminal"],
+          "description": "`approval` means an artifact named this plan. `terminal` means a controlling terminal was present and the operator confirmed at the prompt. Neither is silently substituted for the other; the receipt says which."
+        },
+        "plan_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "operation": {"enum": ["up", "abort-up", "down"]},
+        "approved_by": {"type": "string", "minLength": 1},
+        "approved_at": {"type": "string", "minLength": 1},
+        "reason": {"type": "string"}
+      }
+    }
+  }
+}

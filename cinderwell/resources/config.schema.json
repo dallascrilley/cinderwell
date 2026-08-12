@@ -1,0 +1,312 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cinderwell.dev/schema/config.schema.json",
+  "title": "Cinderwell ephemeral server lifecycle configuration",
+  "description": "Non-secret configuration. Secret values are never stored here; only commands that fetch them are. Structural rules live in this schema; semantic rules that a schema cannot express (mutable image names, secret-shaped values, envelope sanity) are enforced in lifecycle.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "hcloud_context",
+    "location",
+    "server_type",
+    "image_id",
+    "server_name_prefix",
+    "firewall_id",
+    "firewall_name",
+    "public_net",
+    "spend_envelope",
+    "lease",
+    "credentials",
+    "tailscale",
+    "ssh",
+    "workspace"
+  ],
+  "properties": {
+    "$comment": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "hcloud_context": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Named hcloud context, or null to use the ambient HCLOUD_TOKEN supplied by a secret manager. Either way the account identity is proven by firewall_name, not by this label."
+    },
+    "location": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{3,10}$"
+    },
+    "server_type": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{3,20}$"
+    },
+    "image_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Immutable numeric image ID. A string such as 'ubuntu-24.04' or 'latest' fails validation by type, which is the point."
+    },
+    "server_name_prefix": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{2,40}$"
+    },
+    "firewall_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Pre-existing deny-inbound firewall. Provisioning attaches it in the create request so it is active before first boot."
+    },
+    "firewall_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Exact expected name of firewall_id. Verified by describing the firewall before any read or mutation, which is what actually proves the credential addresses the intended project."
+    },
+    "public_net": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enable_ipv4",
+        "enable_ipv6",
+        "ipv4_auto_delete"
+      ],
+      "properties": {
+        "enable_ipv4": {
+          "type": "boolean"
+        },
+        "enable_ipv6": {
+          "type": "boolean"
+        },
+        "ipv4_auto_delete": {
+          "type": "boolean"
+        }
+      }
+    },
+    "spend_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "max_hourly",
+        "max_monthly",
+        "max_concurrent_servers"
+      ],
+      "properties": {
+        "currency": {
+          "type": "string",
+          "pattern": "^[A-Z]{3}$"
+        },
+        "max_hourly": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_monthly": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_concurrent_servers": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the unattended reaper obtains provider credentials. Interactive runs export HCLOUD_TOKEN and TAILSCALE_API_TOKEN by hand and these are never consulted; a scheduled job has no such environment and no human to prompt, so it runs these commands itself and captures stdout. Commands, not values: load_config rejects secret-shaped values everywhere, and this block is the one place someone would be most tempted to paste a token.",
+      "required": [
+        "hcloud_token_command",
+        "tailscale_api_token_command"
+      ],
+      "properties": {
+        "hcloud_token_command": {
+          "$ref": "#/definitions/secret_command"
+        },
+        "tailscale_api_token_command": {
+          "$ref": "#/definitions/secret_command"
+        }
+      }
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Every host carries an expiry, and it is required rather than optional. An optional lease is 'the operator will remember to destroy it', which is not enforcement -- and a host nobody destroys is not a temporary dev server. The expiry itself is set at plan time and travels inside the hash-bound plan, so it is approved along with the machine type and the spend rather than configured somewhere it could drift from what was approved.",
+      "required": [
+        "default_seconds",
+        "max_seconds",
+        "ref_namespace"
+      ],
+      "properties": {
+        "default_seconds": {
+          "type": "integer",
+          "minimum": 300,
+          "description": "Lease length when a plan does not name one. The clock starts at PLAN time, not at boot, so this is not a guaranteed working window: a run that sits between planning and applying spends its lease waiting. The five-minute floor stops a typo producing an instantly-dead host; it does not promise time to build in. `apply_up` refuses a plan whose expiry has already passed."
+        },
+        "max_seconds": {
+          "type": "integer",
+          "minimum": 300,
+          "maximum": 604800,
+          "description": "Longest lease any plan may request. Ceilinged at a week, because a lease long enough to forget is the thing this block exists to prevent."
+        },
+        "ref_namespace": {
+          "type": "string",
+          "pattern": "^refs/(?!heads/|tags/|remotes/)[a-z][a-z0-9-]*/$",
+          "description": "Where preserved work is pushed, as `<namespace><run-id>`. Refused if it would write under refs/heads, refs/tags, or refs/remotes: preservation must never surprise a human by moving a branch they read. A run-scoped ref outside those namespaces is invisible to everyday git and survives exactly as long as it is wanted."
+        }
+      }
+    },
+    "tailscale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tailnet",
+        "tag",
+        "key_expiry_seconds",
+        "oauth_client_secret_command"
+      ],
+      "properties": {
+        "tailnet": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "pattern": "^tag:[a-z0-9][a-z0-9-]{1,40}$"
+        },
+        "key_expiry_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 600
+        },
+        "oauth_client_secret_command": {
+          "$ref": "#/definitions/secret_command"
+        }
+      }
+    },
+    "ssh": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "known_hosts_file"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "minLength": 1
+        },
+        "known_hosts_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "config_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SSH config file the managed alias block is written into. Optional: defaults to ~/.ssh/config. Only the delimited block is rewritten, so the operator's own stanzas survive."
+        },
+        "remote_user": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Login user on the ephemeral host. Optional: defaults to root, which is what the pinned Ubuntu image provisions."
+        },
+        "key_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": "Provider SSH key IDs granted access at creation. IDs rather than key material, matching firewall_id and image_id, so nothing secret enters this file. A host created without one cannot be reached, which strands a billable machine that teardown's work guards then cannot clear. Learned live."
+        },
+        "identity_file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Private key the managed alias offers. Optional: defaults to ~/.ssh/id_ed25519. The alias sets IdentitiesOnly yes, so without a named identity it offers nothing at all when the agent is empty."
+        }
+      }
+    },
+    "devpod": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. When the host is driven through DevPod, teardown stops and deletes the named workspace before destroying the server, so DevPod's own record does not outlive the machine it points at.",
+      "required": [
+        "workspace_name"
+      ],
+      "properties": {
+        "workspace_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^/",
+          "description": "Absolute path of the source-only worktree on the ephemeral host. Teardown inspects it for uncommitted or unpushed commits; without it the work guard cannot run and teardown refuses."
+        }
+      }
+    },
+    "retained_resources": {
+      "type": "array",
+      "description": "Provider resources this configuration knowingly keeps between runs, each with an owner and a review date. Declared here so an inventory that finds them does not report them as drift.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "purpose",
+          "owner",
+          "max_monthly",
+          "review_by"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "max_monthly": {
+            "type": "number",
+            "minimum": 0
+          },
+          "review_by": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "secret_command": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "argv of a command that prints one secret to stdout and nothing else. Run with no shell, so no quoting rules apply and no substitution happens. Its output is captured, used, and never logged, printed, or written into a receipt."
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cinderwell.dev/schema/state.schema.json",
+  "title": "Hybrid ephemeral server lifecycle state",
+  "description": "Local and off-host runtime state for one disposable Cinderwell host. Records provider resource IDs and private aliases, never secret values. A single primary record is tracked: there is no restore target, because source-only hosts have nothing to restore.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generation", "config_digest", "primary"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "generation": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonically increasing. A load that observes a lower generation than the last one written is treated as rollback and refused."
+    },
+    "config_digest": {
+      "$ref": "#/definitions/sha256",
+      "description": "Canonical digest of the configuration this state was produced under. A mismatch invalidates every recorded plan hash."
+    },
+    "primary": {"$ref": "#/definitions/host_record"}
+  },
+  "definitions": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "authority": {
+      "description": "The record of *how* a mutation was authorized, written into state and into receipts. This definition is the single source of truth for that shape: state.schema.json and receipt.schema.json carry copies, and a test asserts all three are byte-identical, because a contract stated twice is a contract that drifts.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "plan_hash", "operation"],
+      "properties": {
+        "kind": {
+          "enum": ["approval", "terminal"],
+          "description": "`approval` means an artifact named this plan. `terminal` means a controlling terminal was present and the operator confirmed at the prompt. Neither is silently substituted for the other; the receipt says which."
+        },
+        "plan_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "operation": {"enum": ["up", "abort-up", "down"]},
+        "approved_by": {"type": "string", "minLength": 1},
+        "approved_at": {"type": "string", "minLength": 1},
+        "reason": {"type": "string"}
+      }
+    },
+    "phase": {
+      "description": "Fail-closed lifecycle phases. FAILED is terminal for automation and requires operator review; it never implies resources are absent.",
+      "enum": [
+        "ABSENT",
+        "PLANNED",
+        "PROVISIONING",
+        "TRUST_PENDING",
+        "TRUSTED",
+        "READY",
+        "DESTROYING",
+        "ABSENT_VERIFIED",
+        "FAILED"
+      ]
+    },
+    "host_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase"],
+      "properties": {
+        "phase": {"$ref": "#/definitions/phase"},
+        "run_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{2,62}$",
+          "description": "Purpose-specific identifier for one lifecycle attempt. Binds evidence, labels, and the console fingerprint check."
+        },
+        "plan_hash": {
+          "$ref": "#/definitions/sha256",
+          "description": "Hash of the immutable plan this record was created under. Applying a plan whose hash does not match refuses before mutation."
+        },
+        "authority": {
+          "$ref": "#/definitions/authority",
+          "description": "How the mutation that produced this record was authorized. Written before the provider is called, so a crash mid-create still leaves the answer to 'who asked for this machine' on disk."
+        },
+        "expires_at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "RFC3339 instant this host stops being allowed to exist, copied verbatim from the approved plan rather than recomputed. Recorded before the provider is called, so a machine that exists always has a readable expiry -- including one whose creation then failed."
+        },
+        "server_id": {"type": "integer", "minimum": 1},
+        "server_name": {"type": "string", "minLength": 1},
+        "primary_ipv4_id": {"type": "integer", "minimum": 1},
+        "firewall_id": {"type": "integer", "minimum": 1},
+        "image_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Immutable numeric image ID. Mutable names such as 'latest' are rejected at config load, not here."
+        },
+        "tailscale_key_id": {"type": "string", "minLength": 1},
+        "tailscale_device_id": {"type": "string", "minLength": 1},
+        "tailscale_hostname": {"type": "string", "minLength": 1},
+        "host_key_fingerprint": {"type": "string", "minLength": 1},
+        "bootstrap_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "alias": {"type": "string", "minLength": 1},
+        "labels": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        },
+        "hourly_cost": {"type": "number", "minimum": 0},
+        "monthly_cost": {"type": "number", "minimum": 0},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+        "recorded_at": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
