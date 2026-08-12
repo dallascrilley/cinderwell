@@ -564,7 +564,7 @@ def _emit(value: Any) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="cinderwell teardown",
-        description="Destroy one Cinderwell host and prove nothing was "
+        description="Destroy one Matchbox host and prove nothing was "
                     "orphaned. Every mutation requires the exact hash of a "
                     "reviewed plan.")
     parser.add_argument("--config", type=Path, default=None,

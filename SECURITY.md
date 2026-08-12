@@ -17,10 +17,10 @@ This project is pre-1.0 and single-branch. Only `main` receives security fixes.
 
 ## What this repository is
 
-Cinderwell is an architectural extract: disposable cloud dev servers that
-destroy themselves on a lease and produce a proof receipt. It is not a hosted
-service. The test suite is hermetic (fakes only); live provider use requires
-credentials you supply.
+Matchbox (formerly Cinderwell) is an architectural extract: disposable cloud
+dev servers that destroy themselves on a lease and produce a proof receipt. It
+is not a hosted service. The test suite is hermetic (fakes only); live provider
+use requires credentials you supply.
 
 ## Trust boundary (short)
 

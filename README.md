@@ -1,10 +1,16 @@
-# Cinderwell
+<p align="center">
+  <img src="docs/brand/lockup.png" alt="Matchbox — Disposable cloud servers with a lease." width="720">
+</p>
+
+# Matchbox
 
 **Disposable cloud dev servers that destroy themselves on a lease, and prove it.**
 
+*Formerly [Cinderwell](docs/brand/BRAND.md).*
+
 A dev box you spin up for an afternoon should not still be billing you on
 Thursday. The usual answer is a reminder, a cron job, or a teammate who
-notices. Cinderwell makes the expiry part of the machine's own record: every
+notices. Matchbox makes the expiry part of the machine's own record: every
 host is created under a hash-bound plan that carries the instant it stops being
 allowed to exist, a scheduled reaper enforces that instant whether or not
 anyone is watching, and the destruction produces a **receipt** — a signed-off
@@ -41,7 +47,7 @@ keeping.
 
 ## The proof
 
-Cinderwell ships an executable demonstration. It runs a complete teardown of a
+Matchbox ships an executable demonstration. It runs a complete teardown of a
 host in phase `READY` whose lease has expired, against fakes — no credentials,
 no network, no provider:
 
@@ -173,7 +179,7 @@ their pythons externally managed (PEP 668) and refuse a bare `pip install .`.
 $ python3 -m venv .venv && source .venv/bin/activate
 $ pip install .
 
-$ cinderwell --help
+$ cinderwell --help   # CLI binary name; product is Matchbox
 usage: cinderwell <command> [options]
 
 commands:
@@ -366,7 +372,7 @@ Things this repository does **not** do, stated plainly:
   is by exact ID" are asserted rather than assumed — but a passing suite is
   evidence about *this code*, not about the provider's current API.
 - **One exception, and it skips loudly.** A single contract test compares the
-  flags Cinderwell emits against `hcloud server create --help` on the local
+  flags Matchbox emits against `hcloud server create --help` on the local
   machine. It is a local binary's help text, not a network call or an
   authenticated one, and it skips when `hcloud` is not installed.
 - **Single provider.** Hetzner Cloud only, via the `hcloud` CLI, plus the

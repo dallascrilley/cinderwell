@@ -581,7 +581,7 @@ def _emit(value: Any) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="cinderwell provision",
-        description="Create or abandon one Cinderwell host. Every "
+        description="Create or abandon one Matchbox host. Every "
                     "mutation requires the exact hash of a reviewed plan.")
     parser.add_argument("--config", type=Path, default=None,
                         help="configuration (default: XDG machine path)")

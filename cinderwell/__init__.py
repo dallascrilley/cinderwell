@@ -1,4 +1,4 @@
-"""Cinderwell: disposable cloud dev servers that destroy themselves on a lease.
+"""Matchbox: disposable cloud dev servers that destroy themselves on a lease.
 
 Six modules, in the order a host moves through them:
 

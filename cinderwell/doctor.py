@@ -153,7 +153,7 @@ def examine(config_path: Path, *, state_path: Path | None = None) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="cinderwell doctor",
-        description="Validate cinderwell configuration against the installed schema. "
+        description="Validate Matchbox configuration against the installed schema. "
                     "Reports only; does not edit configuration.")
     parser.add_argument("--config", type=Path, default=None,
                         help="configuration file (default: XDG machine path)")

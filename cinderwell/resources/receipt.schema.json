@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/dallascrilley/cinderwell/tree/main/cinderwell/resources/receipt.schema.json",
-  "title": "Cinderwell ephemeral server lifecycle receipt",
+  "title": "Matchbox ephemeral server lifecycle receipt",
   "description": "Sanitized evidence for one lifecycle run. Contains no credentials, no private network identifiers, and no raw command output. Absent evidence is NOT_VERIFIED, never PASS.",
   "type": "object",
   "additionalProperties": false,

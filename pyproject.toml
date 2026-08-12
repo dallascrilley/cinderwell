@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cinderwell"
 version = "0.1.0"
-description = "Disposable cloud dev servers that destroy themselves on a lease, and prove it."
+description = "Matchbox — disposable cloud dev servers that destroy themselves on a lease, and prove it."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
