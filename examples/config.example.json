@@ -1,0 +1,64 @@
+{
+  "$comment": "Non-secret example with synthetic resource IDs. Copy to ~/.config/cinderwell/config.json and replace every value with your own. hcloud_context is null here because the token is supplied through the environment by a secret manager; account identity is proven by firewall_name, not by a local context label.",
+  "schema_version": 1,
+  "hcloud_context": null,
+  "location": "hel1",
+  "server_type": "cx33",
+  "image_id": 100000001,
+  "server_name_prefix": "cinderwell",
+  "firewall_id": 100000002,
+  "firewall_name": "cinderwell-deny-inbound",
+  "public_net": {
+    "enable_ipv4": true,
+    "enable_ipv6": true,
+    "ipv4_auto_delete": true
+  },
+  "spend_envelope": {
+    "currency": "USD",
+    "max_hourly": 0.05,
+    "max_monthly": 12.0,
+    "max_concurrent_servers": 1
+  },
+  "credentials": {
+    "hcloud_token_command": [
+      "your-secret-tool",
+      "read",
+      "hcloud/api-token"
+    ],
+    "tailscale_api_token_command": [
+      "your-secret-tool",
+      "read",
+      "tailscale/api-token"
+    ]
+  },
+  "lease": {
+    "default_seconds": 14400,
+    "max_seconds": 86400,
+    "ref_namespace": "refs/lease/"
+  },
+  "tailscale": {
+    "tailnet": "example-tailnet.ts.net",
+    "tag": "tag:cinderwell",
+    "key_expiry_seconds": 600,
+    "oauth_client_secret_command": [
+      "your-secret-tool",
+      "read",
+      "tailscale/oauth-client-secret"
+    ]
+  },
+  "ssh": {
+    "alias": "cinderwell",
+    "known_hosts_file": "~/.ssh/known_hosts.cinderwell",
+    "key_ids": [
+      100000003
+    ],
+    "identity_file": "~/.ssh/id_ed25519"
+  },
+  "devpod": {
+    "workspace_name": "cinderwell"
+  },
+  "workspace": {
+    "path": "/home/dev/workspace/project"
+  },
+  "retained_resources": []
+}
