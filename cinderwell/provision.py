@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Provisioning and fail-closed abort for Cinderwell hosts (unit S3).
 
-This is the first module in the hybrid path that can spend money. It is kept
+This is the first module in the lifecycle path that can spend money. It is kept
 separate from `lifecycle.py` on purpose: the planner has no mutation verb at all
 and a test asserts that stays true, so "planning cannot create anything" remains
 an architectural property rather than a convention.

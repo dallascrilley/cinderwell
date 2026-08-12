@@ -188,7 +188,7 @@ git add -A
 # An empty commit is fine and an empty tree is not an error: the worktree may
 # hold unpushed commits and no uncommitted changes, which is still work that
 # exists nowhere else.
-git -c user.name='factory lease reaper' \\
+git -c user.name='cinderwell lease reaper' \\
     -c user.email='lease-reaper@cinderwell.invalid' \\
     commit -q --allow-empty -m 'lease preservation: work in flight on this host'
 # --force is safe and necessary here: the ref is scoped to this run and nothing
@@ -684,46 +684,41 @@ def _xml_text(value: str) -> str:
             .replace('"', "&quot;"))
 
 
-def render_plist(factory_bin: Path, state_path: Path, config_path: Path,
+def render_plist(binary: Path, state_path: Path, config_path: Path,
                  interval_seconds: int) -> str:
     """Render the launchd plist for the reaper.
 
     The job must not bake a repository checkout path: the reaper outlives any
-    one worktree. It invokes the installed ``factory`` binary with absolute
-    ``--config`` and ``--state`` paths, and writes StandardOut/Err under the
-    machine state root next to the host state file.
+    one working copy. It invokes the installed ``cinderwell`` binary with
+    absolute ``--config`` and ``--state`` paths, and writes StandardOut/Err
+    under the machine state root next to the host state file.
     """
     if interval_seconds < 60:
         raise LeaseError(
             "an interval under a minute is a busy loop against a provider API, "
             "not a reaper")
-    binary = Path(factory_bin).expanduser()
+    binary = Path(binary).expanduser()
     if not binary.is_absolute():
         raise LeaseError(
-            f"factory binary for launchd must be an absolute path, got {binary}")
+            f"cinderwell binary for launchd must be an absolute path, got {binary}")
     if not binary.is_file() or not os.access(binary, os.X_OK):
         raise LeaseError(
-            f"factory binary for launchd must be an existing executable: {binary}")
-    # A binary inside a linked worktree dies when the worktree is removed after
-    # merge. launchd would then exec a missing path every interval with no
-    # escalation — the silent non-enforcement this job exists to prevent.
-    try:
-        top = subprocess.run(
-            ["git", "-C", str(binary.parent), "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=False,
-            timeout=COMMAND_TIMEOUT_SECONDS)
-        if top.returncode == 0:
-            root = Path(top.stdout.strip())
-            if root.is_dir() and is_linked_worktree(root):
-                raise LeaseError(
-                    f"factory binary for launchd is inside a linked worktree "
-                    f"({root}); install to a machine path that outlives the "
-                    f"worktree (for example a user-local venv) and pass that "
-                    f"absolute path")
-    except LeaseError:
-        raise
-    except Exception:
-        pass
+            f"cinderwell binary for launchd must be an existing executable: {binary}")
+    # A binary inside a *project* git checkout — primary or linked worktree,
+    # including a .venv created in this clone — dies when the working copy is
+    # removed. launchd would then exec a missing path every interval with no
+    # escalation, which is the silent non-enforcement this job exists to
+    # prevent. Machine package roots (Homebrew, pipx, /usr) are also git
+    # checkouts in some environments; those are durable installs and are
+    # allowed.
+    if not is_durable_install(binary):
+        checkout = git_toplevel_containing(binary)
+        if checkout is not None:
+            raise LeaseError(
+                f"cinderwell binary for launchd is inside a git checkout "
+                f"({checkout}); install to a machine path that outlives the "
+                f"working copy (for example a user-local venv or pipx) and "
+                f"pass that absolute path")
     config = Path(config_path).expanduser()
     state = Path(state_path).expanduser()
     if not config.is_absolute() or not state.is_absolute():
@@ -752,15 +747,70 @@ def render_plist(factory_bin: Path, state_path: Path, config_path: Path,
     return rendered
 
 
+def git_toplevel_containing(path: Path) -> Path | None:
+    """Return the git top-level if `path` resolves inside a working tree.
+
+    Used by ``render_plist`` so a launchd job cannot be pointed at a binary
+    that lives inside a project clone (or any other non-durable checkout),
+    including a venv created under the repository root.
+    """
+    try:
+        start = path if path.is_dir() else path.parent
+        top = subprocess.run(
+            ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=False,
+            timeout=COMMAND_TIMEOUT_SECONDS)
+        if top.returncode != 0:
+            return None
+        root = Path(top.stdout.strip()).resolve()
+        if not root.is_dir():
+            return None
+        path.resolve().relative_to(root)
+        return root
+    except (ValueError, OSError, subprocess.SubprocessError):
+        return None
+
+
+def is_durable_install(binary: Path) -> bool:
+    """Whether `binary` sits under a machine install root, not a project clone.
+
+    Homebrew, pipx, pyenv, and system prefixes are often themselves git
+    checkouts; treating them as "project checkouts" would refuse every sane
+    launchd install path.
+    """
+    resolved = binary.expanduser().resolve()
+    home = Path.home().resolve()
+    prefixes = (
+        Path("/opt/homebrew"),
+        Path("/usr/local"),
+        Path("/usr"),
+        Path("/bin"),
+        Path("/sbin"),
+        Path("/nix/store"),
+        Path("/home/linuxbrew"),
+        home / ".local",
+        home / ".pyenv",
+        home / ".asdf",
+        home / "Library" / "Application Support" / "pipx",
+        home / ".local" / "pipx",
+    )
+    for prefix in prefixes:
+        try:
+            resolved.relative_to(prefix.resolve() if prefix.exists() else prefix)
+            return True
+        except (ValueError, OSError):
+            continue
+    return False
+
 
 def is_linked_worktree(root: Path,
                        runner: Callable[..., subprocess.CompletedProcess]
                        | None = None) -> bool:
     """Whether `root` is a linked worktree rather than the primary checkout.
 
-    In a linked worktree `--git-dir` points inside `.git/worktrees/<name>` while
-    `--git-common-dir` points at the shared `.git`; in the primary checkout they
-    are the same directory.
+    Kept for diagnostics. ``render_plist`` refuses *any* git checkout via
+    ``git_toplevel_containing``, which is the stronger property the launchd
+    job needs.
     """
     run = runner or (lambda argv: subprocess.run(
         argv, cwd=str(root), capture_output=True, text=True, check=False,
@@ -805,8 +855,12 @@ def main(argv: list[str] | None = None) -> int:
                              "trusting a launchd job to enforce anything")
     parser.add_argument("--render-plist", action="store_true", default=False,
                         help="print the launchd plist for absolute machine paths")
+    parser.add_argument("--bin", type=Path, default=None,
+                        help="absolute path to cinderwell binary for --render-plist")
+    # Pre-rename alias kept so an existing launchd install recipe that still
+    # passes --factory-bin does not silently drop the flag.
     parser.add_argument("--factory-bin", type=Path, default=None,
-                        help="absolute path to factory binary for --render-plist")
+                        help=argparse.SUPPRESS)
     parser.add_argument("--interval", type=int, default=300,
                         help="seconds between reaper runs, for --render-plist")
     args = parser.parse_args(argv)
@@ -815,15 +869,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.render_plist:
         # Outside the escalation path on purpose. Rendering a plist establishes
-        # nothing about any host, so a refusal here -- a linked worktree, an
-        # interval below the floor -- must not leave a record saying one is
-        # stranded. It used to exit 3 with exactly that.
+        # nothing about any host, so a refusal here -- a checkout-resident
+        # binary, an interval below the floor -- must not leave a record saying
+        # one is stranded. It used to exit 3 with exactly that.
         try:
+            chosen = args.bin or args.factory_bin
             print(render_plist(
                 paths.require_absolute(
-                    Path(args.factory_bin) if args.factory_bin
+                    Path(chosen) if chosen
                     else Path(shutil.which("cinderwell") or "cinderwell"),
-                    field="factory_bin"),
+                    field="bin"),
                 paths.require_absolute(args.state, field="state"),
                 paths.require_absolute(args.config, field="config"),
                 args.interval), end="")

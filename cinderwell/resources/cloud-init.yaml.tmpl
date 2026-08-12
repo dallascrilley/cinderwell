@@ -1,7 +1,7 @@
 #cloud-config
-# Ephemeral factory host bootstrap (unit S3).
+# Ephemeral cinderwell host bootstrap.
 #
-# Placeholders are substituted by scripts/hybrid/provision.py:
+# Placeholders are substituted by cinderwell.provision:
 #   {{RUN_ID}}          purpose-specific run identifier
 #   {{HOSTNAME}}        unique per-run Tailscale node name
 #   {{TAILSCALE_TAG}}   approved ACL tag
@@ -19,7 +19,7 @@ hostname: {{HOSTNAME}}
 preserve_hostname: false
 
 write_files:
-  - path: /etc/factory-run-id
+  - path: /etc/cinderwell-run-id
     permissions: "0644"
     content: |
       {{RUN_ID}}
@@ -27,7 +27,7 @@ write_files:
     permissions: "0600"
     owner: root:root
     content: {{TAILSCALE_KEY}}
-  - path: /usr/local/sbin/factory-bootstrap.sh
+  - path: /usr/local/sbin/cinderwell-bootstrap.sh
     permissions: "0700"
     owner: root:root
     content: |
@@ -89,11 +89,11 @@ write_files:
       hexprint="$(awk '{print $2}' /etc/ssh/ssh_host_ed25519_key.pub \
                   | base64 -d | sha256sum | awk '{print $1}')"
       {
-        echo "FACTORY-RUN-ID {{RUN_ID}}"
-        echo "FACTORY-HOSTKEY ${fingerprint}"
-        echo "FACTORY-HOSTKEY-HEX ${hexprint}"
-        echo "FACTORY-KEY-SCRUB ${scrub_status}"
-        echo "FACTORY-TAILSCALE ${backend}"
+        echo "CINDERWELL-RUN-ID {{RUN_ID}}"
+        echo "CINDERWELL-HOSTKEY ${fingerprint}"
+        echo "CINDERWELL-HOSTKEY-HEX ${hexprint}"
+        echo "CINDERWELL-KEY-SCRUB ${scrub_status}"
+        echo "CINDERWELL-TAILSCALE ${backend}"
       } > /dev/console
 
       # ...and again where it will still be there later. Writing only to
@@ -109,13 +109,13 @@ write_files:
       # only during the seconds it was printed.
       {
         echo ""
-        echo "FACTORY-RUN-ID {{RUN_ID}}"
-        echo "FACTORY-HOSTKEY ${fingerprint}"
-        echo "FACTORY-HOSTKEY-HEX ${hexprint}"
-        echo "FACTORY-KEY-SCRUB ${scrub_status}"
-        echo "FACTORY-TAILSCALE ${backend}"
+        echo "CINDERWELL-RUN-ID {{RUN_ID}}"
+        echo "CINDERWELL-HOSTKEY ${fingerprint}"
+        echo "CINDERWELL-HOSTKEY-HEX ${hexprint}"
+        echo "CINDERWELL-KEY-SCRUB ${scrub_status}"
+        echo "CINDERWELL-TAILSCALE ${backend}"
         echo ""
       } >> /etc/issue
 
 runcmd:
-  - [ /usr/local/sbin/factory-bootstrap.sh ]
+  - [ /usr/local/sbin/cinderwell-bootstrap.sh ]

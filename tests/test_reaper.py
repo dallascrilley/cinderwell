@@ -116,7 +116,7 @@ class ReapFixture:
     """A READY host with a recorded expiry, and nothing real behind it.
 
     READY is the phase after rehydrate — the only phase that can hold a
-    factory workspace. TRUSTED never rehydrated and cannot carry work.
+    host workspace. TRUSTED never rehydrated and cannot carry work.
     """
 
     def __init__(self, *, phase: str = "READY", expires_at: str | None = EXPIRY,
@@ -327,7 +327,7 @@ class PlanTest(unittest.TestCase):
                              fixture.saved()["primary"]["expires_at"])
 
     def test_a_plan_whose_lease_already_expired_is_refused_at_apply(self) -> None:
-        """The workflow `hybrid-approve` exists to enable makes this reachable.
+        """The approval path that exists to enable this makes it reachable.
 
         Plan at 09:00 with a 30m lease, a human reviews and approves, an agent
         applies at 11:00. The lease clock started at plan time, so state would
@@ -814,7 +814,7 @@ class ContinuousPreservationTest(unittest.TestCase):
 class CredentialTest(unittest.TestCase):
     """The finding that made the whole unit a silent no-op.
 
-    `hybrid-reap` used to depend on a recipe that refuses when HCLOUD_TOKEN and
+    An earlier reaper recipe used to refuse when HCLOUD_TOKEN and
     TAILSCALE_API_TOKEN are absent from the environment. launchd's login shell
     exports neither, so the job exited 2 before the reaper ran, wrote no
     escalation record, and the host billed forever while the operator believed
@@ -1681,7 +1681,7 @@ class PlistTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             _, state, config = self._paths(directory)
             with self.assertRaises(lifecycle.LeaseError):
-                reaper.render_plist(Path("relative/factory"), state, config, 300)
+                reaper.render_plist(Path("relative/cinderwell"), state, config, 300)
 
     def test_a_busy_loop_interval_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1697,7 +1697,7 @@ class PlistTest(unittest.TestCase):
                                 "--state", str(fixture.state_path),
                                 "--now", AFTER, "--interval", "30",
                                 "--render-plist",
-                                "--factory-bin", "/usr/bin/factory"])
+                                "--bin", "/usr/bin/cinderwell"])
             self.assertEqual(2, code)
             self.assertFalse(escalation.exists())
 
@@ -1714,19 +1714,44 @@ class PlistTest(unittest.TestCase):
                 code = reaper.main(["--config", str(fixture.tree.config_path),
                                     "--state", str(fixture.state_path),
                                     "--render-plist",
-                                    "--factory-bin", sys.executable])
+                                    "--bin", sys.executable])
             self.assertEqual(0, code)
             rendered = plistlib.loads(out.getvalue().encode("utf-8"))
             self.assertIn(sys.executable, str(rendered))
 
     def test_the_linked_worktree_helper_answers_for_this_checkout(self) -> None:
-        """is_linked_worktree remains for diagnostics; render no longer uses it.
+        """is_linked_worktree remains for diagnostics.
 
-        Asserted as "returns a bool without raising" rather than a fixed
-        answer, because whether the suite runs from the primary checkout, a
-        linked worktree, or an extracted archive is the caller's business.
+        ``render_plist`` uses the stronger ``git_toplevel_containing`` check
+        (any checkout, not only linked worktrees). This helper is still
+        exercised so a later diagnostic path does not rot untested.
         """
         self.assertIsInstance(reaper.is_linked_worktree(REPOSITORY_ROOT), bool)
+
+    def test_a_binary_inside_this_checkout_is_refused(self) -> None:
+        """launchd must not point at a binary that dies with the working copy.
+
+        Matches the README claim: refuse a binary inside a git checkout,
+        including a .venv created under this clone.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            # A fake executable that git will treat as living under REPOSITORY_ROOT
+            # is hard to arrange; instead place a binary under this suite's own
+            # checkout (REPOSITORY_ROOT) if we can write there, else skip.
+            candidate = REPOSITORY_ROOT / ".cinderwell-render-plist-probe"
+            try:
+                candidate.write_text("#!/bin/sh\n")
+                candidate.chmod(0o755)
+            except OSError:
+                self.skipTest("cannot write a probe binary under the checkout")
+            try:
+                _, state, config = self._paths(directory)
+                with self.assertRaises(lifecycle.LeaseError) as raised:
+                    reaper.render_plist(candidate, state, config, 300)
+                self.assertIn("git checkout", str(raised.exception))
+            finally:
+                candidate.unlink(missing_ok=True)
 
 
 

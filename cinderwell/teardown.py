@@ -45,7 +45,7 @@ DOWN_PHASES = {"TRUST_PENDING", "TRUSTED", "READY", "DESTROYING", "FAILED"}
 
 # Phases in which the host provably never received a workspace. In these the
 # "no unpushed work" guard is vacuously satisfied rather than skipped.
-# TRUSTED is included: rehydrate is what creates the factory workspace, and
+# TRUSTED is included: rehydrate is what creates the host workspace, and
 # rehydrate is what advances the phase to READY. A host that stopped at
 # TRUSTED (including preview-only hosts that never rehydrate) never held
 # work, so requiring the workspace path there forced operators through
@@ -360,7 +360,7 @@ def evaluate_guards(config: dict, state: dict, plan: dict, *,
         results.append(_result(
             "G3_work_preserved", "PASS",
             f"vacuous in phase {phase}: the host never reached READY, so no "
-            f"factory workspace was ever created on it"))
+            f"host workspace was ever created on it"))
     elif phase in MAY_CARRY_WORK:
         alias = plan.get("alias")
         workspace = (config.get("workspace") or {}).get("path")
@@ -410,7 +410,7 @@ def evaluate_guards(config: dict, state: dict, plan: dict, *,
     else:
         results.append(_result("G4_no_active_session", "PASS",
                                f"vacuous in phase {phase}: the host never reached "
-                               f"READY, so no interactive factory session was "
+                               f"READY, so no interactive host session was "
                                f"established"))
 
     return results
