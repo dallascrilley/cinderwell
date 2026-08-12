@@ -1259,8 +1259,14 @@ class EscalationTest(unittest.TestCase):
                 else:
                     os.environ["TMPDIR"] = previous
             self.assertEqual(1, len(seen), f"the location moved: {seen}")
-            self.assertNotIn(Path(tempfile.gettempdir()),
-                             seen.pop().parents)
+            location = seen.pop()
+            if Path(tempfile.gettempdir()) in Path.home().parents:
+                # A HOME beneath the temp directory is not a configuration this
+                # property can be asserted against: every path under it is also
+                # under the temp directory. Say so rather than fail, because a
+                # confusing failure here reads as a defect in the reaper.
+                self.skipTest("HOME lies beneath the temp directory")
+            self.assertNotIn(Path(tempfile.gettempdir()), location.parents)
 
     @unittest.skipIf(os.geteuid() == 0, "root ignores the mode bits")
     def test_a_failed_sweep_is_not_reported_as_a_failed_recording(self) -> None:
