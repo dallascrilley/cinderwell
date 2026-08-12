@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://cinderwell.dev/schema/state.schema.json",
+  "$id": "https://github.com/dallascrilley/cinderwell/tree/main/cinderwell/resources/state.schema.json",
   "title": "Hybrid ephemeral server lifecycle state",
   "description": "Local and off-host runtime state for one disposable Cinderwell host. Records provider resource IDs and private aliases, never secret values. A single primary record is tracked: there is no restore target, because source-only hosts have nothing to restore.",
   "type": "object",
