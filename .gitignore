@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Machine-scoped configuration and state. These hold real provider resource
+# IDs; the shipped example under examples/ is the one that gets committed.
+config.json
+state.json
+host.json
+*.approval.json
+runtime/
+
+# OS
+.DS_Store

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cinderwell"
+version = "0.1.0"
+description = "Disposable cloud dev servers that destroy themselves on a lease, and prove it."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Dallas Crilley" }]
+keywords = ["hetzner", "tailscale", "ephemeral", "devops", "lease"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Systems Administration",
+]
+# Standard library only. The lifecycle drives the `hcloud` CLI and the Tailscale
+# HTTP API directly rather than taking a second declarative state engine as a
+# dependency.
+dependencies = []
+
+[project.scripts]
+cinderwell = "cinderwell.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["cinderwell*"]
+
+[tool.setuptools.package-data]
+cinderwell = ["resources/*"]
