@@ -41,7 +41,7 @@ exactly the wrong place to keep one -- and `poweroff` is no substitute, since
 Hetzner bills for a server that exists rather than one that is running. So it
 runs on the operator's own machine under launchd, which survives the agent
 process dying and the terminal closing, which are the actual failure modes.
-`cinderwell reaper --install` renders the job; see `render_plist` below.
+`cinderwell reaper --render-plist` renders the job; see `render_plist` below.
 """
 
 from __future__ import annotations
@@ -791,10 +791,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="configuration (default: XDG machine path)")
     parser.add_argument("--state", type=Path, default=None,
                         help="host state (default: XDG machine path)")
-    parser.add_argument("--now", required=True,
+    parser.add_argument("--now", default=None,
                         help="RFC3339 instant to judge the lease against. An "
                              "input, so a test and an operator can ask the same "
-                             "question about a moment that is not this one")
+                             "question about a moment that is not this one. "
+                             "Required for everything except --render-plist, "
+                             "which judges no lease")
     parser.add_argument("--check", action="store_true",
                         help="report what would happen and change nothing")
     parser.add_argument("--check-credentials", action="store_true",
@@ -829,6 +831,9 @@ def main(argv: list[str] | None = None) -> int:
         except (LifecycleError, paths.PathError) as error:
             print(f"{type(error).__name__}: {redact(str(error))}", file=sys.stderr)
             return 2
+
+    if args.now is None:
+        parser.error("the following arguments are required: --now")
 
     try:
         config = lifecycle.load_config(args.config)

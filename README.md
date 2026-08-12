@@ -149,8 +149,9 @@ beyond Python 3.12+. The commands are copied from a session that executed them.
 $ git clone <this-repo> cinderwell && cd cinderwell
 
 $ python3 -m unittest discover -s tests -t tests
-....................................................................
-Ran 340 tests in 5.740s
+[341 dots, interleaved with the diagnostics the failure-path tests
+ print as they pass]
+Ran 341 tests in 4.4s
 
 OK (skipped=4)
 
@@ -159,12 +160,18 @@ $ python3 examples/mock_teardown.py        # the receipt above
 
 Four skips in a bare checkout, and each says why: three cloud-init template
 tests skip without a YAML parser installed, and one contract test skips without
-the `hcloud` CLI. Install either and they run. Nothing else is conditional.
+the `hcloud` CLI. Install either and they run — the contract test adds about 45
+seconds of `hcloud --help` probing when that CLI is present, which is most of
+the difference you will see in the suite's wall time. The only other guards are
+`skipIf(geteuid() == 0)` on a handful of permission-bit tests, because
+root ignores the mode bits they depend on.
 
-Install the CLI:
+Install the CLI. The venv is not optional ceremony: Homebrew and Debian mark
+their pythons externally managed (PEP 668) and refuse a bare `pip install .`.
 
 ```console
-$ python3 -m pip install .
+$ python3 -m venv .venv && source .venv/bin/activate
+$ pip install .
 
 $ cinderwell --help
 usage: cinderwell <command> [options]
@@ -265,11 +272,11 @@ exists always has a readable expiry — including one whose creation then failed
 
 ### The lease is enforced from outside
 
-`--check` is read-only: it reports what the reaper *would* do. Against a state
-file recording a host whose lease ends at 13:00:
+`--check` is read-only: it reports what the reaper *would* do. Against the
+shipped example state file, which records a host whose lease ends at 13:00:
 
 ```console
-$ cinderwell reaper --check --config config.json --state host.json \
+$ cinderwell reaper --check --config examples/config.example.json --state examples/host.example.json \
     --now 2026-08-11T12:00:00Z
 {
   "action": "waiting",
@@ -280,7 +287,7 @@ $ cinderwell reaper --check --config config.json --state host.json \
   "run_id": "run-001"
 }
 
-$ cinderwell reaper --check --config config.json --state host.json \
+$ cinderwell reaper --check --config examples/config.example.json --state examples/host.example.json \
     --now 2026-08-11T13:00:01Z
 {
   "action": "reap",
@@ -302,7 +309,10 @@ box is the wrong place to keep one, and because `poweroff` is no substitute
 when the provider bills for a server that *exists* rather than one that runs.
 `cinderwell reaper --render-plist` emits the scheduled job; the rendered job
 names the installed binary, never a repository checkout, because the reaper
-outlives any one working copy.
+outlives any one working copy. That property is enforced, not aspirational:
+rendering refuses a binary that lives inside a git checkout — including a
+`.venv` created inside this clone — so install somewhere durable first (a venv
+outside the repository, or `pipx install .`).
 
 **The reaper gets no private path.** It runs the ordinary teardown, guards and
 all, and authorizes itself by writing an ordinary approval artifact naming the
@@ -400,7 +410,7 @@ cinderwell/
 examples/
   config.example.json   a complete, synthetic configuration
   mock_teardown.py      the receipt above, generated on demand
-tests/                  340 tests, hermetic
+tests/                  341 tests, hermetic (a throwaway HOME per fixture)
 ```
 
 The JSON schemas in `cinderwell/resources/` are the durable contract. The

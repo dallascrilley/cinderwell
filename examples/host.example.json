@@ -1,0 +1,16 @@
+{
+  "config_digest": "2fb07f3851e0ece2d5aa651b9bc1c068d9b5eca06f50dd9a0b9d1313346e5381",
+  "generation": 4,
+  "primary": {
+    "alias": "cinderwell",
+    "expires_at": "2026-08-11T13:00:00Z",
+    "phase": "READY",
+    "primary_ipv4_id": 100000102,
+    "run_id": "run-001",
+    "server_id": 100000101,
+    "server_name": "cinderwell-run-001",
+    "tailscale_hostname": "cinderwell-run-001",
+    "tailscale_key_id": "key-abc123"
+  },
+  "schema_version": 1
+}

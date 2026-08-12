@@ -35,6 +35,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_DIR = REPOSITORY_ROOT / "cinderwell" / "resources"
@@ -125,17 +126,26 @@ class ReapFixture:
         self.state = state_in(phase, config=self.tree.config,
                               expires_at=expires_at)
         provision.save_state(self.state_path, self.state)
+        # The escalation fallback lives under Path.home() by design. The
+        # suite must not touch the account it runs as, so every fixture gets
+        # a home of its own inside the temporary tree; the runbook directory
+        # an operator reads for stranded hosts stays free of test leftovers.
+        self.home = self.tree.root / "home"
+        # The state subtree exists up front, as it does on a real machine, so
+        # tests that place a record on the fallback path by hand can write
+        # without re-testing the production writer's own mkdir.
+        (self.home / ".local" / "state" / "cinderwell").mkdir(parents=True,
+                                                              exist_ok=True)
+        self._home_patch = mock.patch("pathlib.Path.home",
+                                      return_value=self.home)
 
     def __enter__(self):
+        self._home_patch.start()
         return self
 
     def __exit__(self, *exception):
-        # The fallback record lives outside the temporary tree, under the real
-        # home directory, so it outlives this fixture unless something removes
-        # it. Leaving it there is not merely untidy: the runbook tells an
-        # operator to read exactly that directory to find stranded hosts, and a
-        # test's leftovers would be indistinguishable from a real one.
         reaper.fallback_escalation_path(self.state_path).unlink(missing_ok=True)
+        self._home_patch.stop()
         self.tree.__exit__()
 
     def still_there(self):
@@ -1260,13 +1270,11 @@ class EscalationTest(unittest.TestCase):
                     os.environ["TMPDIR"] = previous
             self.assertEqual(1, len(seen), f"the location moved: {seen}")
             location = seen.pop()
-            if Path(tempfile.gettempdir()) in Path.home().parents:
-                # A HOME beneath the temp directory is not a configuration this
-                # property can be asserted against: every path under it is also
-                # under the temp directory. Say so rather than fail, because a
-                # confusing failure here reads as a defect in the reaper.
-                self.skipTest("HOME lies beneath the temp directory")
-            self.assertNotIn(Path(tempfile.gettempdir()), location.parents)
+            # The property under test: the location is derived from the home
+            # directory and from nothing else, so it holds still while TMPDIR
+            # moves. (The fixture's home is inside the temporary tree, so the
+            # old "not under the temp dir" proxy would be vacuous here.)
+            self.assertIn(Path.home(), location.parents)
 
     @unittest.skipIf(os.geteuid() == 0, "root ignores the mode bits")
     def test_a_failed_sweep_is_not_reported_as_a_failed_recording(self) -> None:
@@ -1692,6 +1700,24 @@ class PlistTest(unittest.TestCase):
                                 "--factory-bin", "/usr/bin/factory"])
             self.assertEqual(2, code)
             self.assertFalse(escalation.exists())
+
+    def test_render_plist_runs_without_now(self) -> None:
+        """Rendering judges no lease, so it must not demand a timestamp.
+
+        The documented invocation is `cinderwell reaper --render-plist`. A
+        required `--now` made exactly that invocation exit 2 before anything
+        rendered, and no test walked the CLI's success path to notice.
+        """
+        with ReapFixture() as fixture:
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                code = reaper.main(["--config", str(fixture.tree.config_path),
+                                    "--state", str(fixture.state_path),
+                                    "--render-plist",
+                                    "--factory-bin", sys.executable])
+            self.assertEqual(0, code)
+            rendered = plistlib.loads(out.getvalue().encode("utf-8"))
+            self.assertIn(sys.executable, str(rendered))
 
     def test_the_linked_worktree_helper_answers_for_this_checkout(self) -> None:
         """is_linked_worktree remains for diagnostics; render no longer uses it.
