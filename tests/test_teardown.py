@@ -332,7 +332,7 @@ class GuardTest(unittest.TestCase):
         self.assertIn("already absent", drift["detail"])
 
     def test_the_work_guard_is_vacuous_before_rehydrate_and_says_so(self) -> None:
-        """TRUST_PENDING and TRUSTED never created the factory workspace
+        """TRUST_PENDING and TRUSTED never created the host workspace
         (rehydrate is what does, and rehydrate advances to READY)."""
         for phase in ("TRUST_PENDING", "TRUSTED"):
             with self.subTest(phase=phase):

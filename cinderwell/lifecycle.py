@@ -17,7 +17,7 @@ Three rules shape everything below.
 3. Secrets never enter this process's outputs. The API token is inherited from
    the environment and is never logged, hashed into a plan, or written to state.
 
-Standard library only, by design: the hybrid plan chose the `hcloud` CLI behind
+Standard library only, by design: this design chose the `hcloud` CLI behind
 one stdlib command rather than a second declarative state engine.
 """
 
@@ -51,7 +51,7 @@ def resource_text(name: str) -> str:
         return _resources().joinpath(name).read_text(encoding="utf-8")
     except FileNotFoundError as error:
         raise FileNotFoundError(
-            f"factory package is missing resource {name!r}"
+            f"cinderwell package is missing resource {name!r}"
         ) from error
 
 
@@ -61,7 +61,7 @@ SCHEMA_DIR = Path(str(_resources()))
 PRICING_URL = "https://api.hetzner.cloud/v1/pricing"
 COMMAND_TIMEOUT_SECONDS = 30
 
-# Surfaces this simplified path inventories. The full hybrid plan enumerates
+# Surfaces this simplified path inventories. A fuller production path enumerates
 # more; these are the ones an ephemeral source-only host can actually create or
 # collide with. Anything outside this set is out of scope and is reported as
 # such rather than silently assumed absent.
@@ -917,7 +917,7 @@ def authorize(plan: dict, *, approval_path: Path | None,
         "no approval was supplied and there is no controlling terminal, so "
         "nothing authorizes this plan. Either run it where an operator can "
         "confirm at the prompt, or write an approval: "
-        "factory approve --plan-file PLAN --approved-by WHO")
+        "cinderwell approve --plan-file PLAN --approved-by WHO")
 
 
 def assert_authorized(plan: dict, authority: Any) -> None:

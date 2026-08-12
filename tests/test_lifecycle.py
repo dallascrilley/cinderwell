@@ -54,9 +54,8 @@ def _unreachable_runner(argv: tuple[str, ...]) -> subprocess.CompletedProcess:
     raise AssertionError(f"no command should have run: {' '.join(argv)}")
 
 
-# The real receipt, byte-identical to the object committed at
-# refs/recovery/wks-95/factory-baseline:docs/proofs/v1/<run>.json (blob
-# 9ef50e9432f3297f2675b1ce100d3ff765c228ae). Kept as a fixture so the gate is
+# Pricing fixture for FakeProvider. Shapes match Hetzner's pricing
+# endpoint so digest tests exercise real field layouts without calling it.
 def pricing(currency: str = "USD", hourly: str = "0.0160000000",
             monthly: str = "8.9900000000", location: str = "hel1") -> dict:
     return {
@@ -665,7 +664,7 @@ class CommandLineTest(unittest.TestCase):
                                                 "validate"]))
 
     def test_state_reading_commands_use_the_machine_default_path(self) -> None:
-        """Omitting --state loads $XDG_STATE_HOME/factory/host.json — proven by
+        """Omitting --state loads $XDG_STATE_HOME/cinderwell/host.json — proven by
         seeding READY there and asserting status reports it without --state."""
         for command in ("validate", "status"):
             with self.subTest(command=command), TemporaryTree() as tree:

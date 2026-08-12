@@ -289,8 +289,8 @@ class CloudInitTest(unittest.TestCase):
         self.assertNotIn("> /etc/issue", executable.replace(">> /etc/issue", ""))
 
         issue_block = executable.split(">> /etc/issue")[0]
-        for line in ("FACTORY-RUN-ID", "FACTORY-HOSTKEY", "FACTORY-HOSTKEY-HEX",
-                     "FACTORY-KEY-SCRUB", "FACTORY-TAILSCALE"):
+        for line in ("CINDERWELL-RUN-ID", "CINDERWELL-HOSTKEY", "CINDERWELL-HOSTKEY-HEX",
+                     "CINDERWELL-KEY-SCRUB", "CINDERWELL-TAILSCALE"):
             with self.subTest(line=line):
                 # Twice: once to the console as it boots, once where it stays.
                 self.assertGreaterEqual(executable.count(line), 2)
@@ -303,10 +303,10 @@ class CloudInitTest(unittest.TestCase):
         executable = "\n".join(
             line for line in provision.TEMPLATE_PATH.read_text().splitlines()
             if not line.lstrip().startswith("#"))
-        self.assertIn("FACTORY-HOSTKEY-HEX", executable)
+        self.assertIn("CINDERWELL-HOSTKEY-HEX", executable)
         self.assertIn("sha256sum", executable)
         # Both places it is emitted: the boot console and the durable banner.
-        self.assertEqual(2, executable.count("FACTORY-HOSTKEY-HEX"))
+        self.assertEqual(2, executable.count("CINDERWELL-HOSTKEY-HEX"))
 
     def test_template_does_not_pass_the_key_as_an_argument(self) -> None:
         """`--auth-key file:` keeps the secret out of argv and therefore /proc."""
@@ -355,7 +355,7 @@ class CloudInitTest(unittest.TestCase):
             "run-001", "host", "tag:cinderwell", KEY_SECRET)
         document = yaml.safe_load(rendered)
         script = {entry["path"]: entry for entry in document["write_files"]
-                  }["/usr/local/sbin/factory-bootstrap.sh"]["content"]
+                  }["/usr/local/sbin/cinderwell-bootstrap.sh"]["content"]
         directory = Path(tempfile.mkdtemp())
         path = directory / "bootstrap.sh"
         path.write_text(script)

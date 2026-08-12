@@ -149,9 +149,9 @@ beyond Python 3.12+. The commands are copied from a session that executed them.
 $ git clone <this-repo> cinderwell && cd cinderwell
 
 $ python3 -m unittest discover -s tests -t tests
-[341 dots, interleaved with the diagnostics the failure-path tests
+[342 dots, interleaved with the diagnostics the failure-path tests
  print as they pass]
-Ran 341 tests in 4.4s
+Ran 342 tests in 4.4s
 
 OK (skipped=4)
 
@@ -308,11 +308,13 @@ host, because deleting a Hetzner server needs a provider token and a disposable
 box is the wrong place to keep one, and because `poweroff` is no substitute
 when the provider bills for a server that *exists* rather than one that runs.
 `cinderwell reaper --render-plist` emits the scheduled job; the rendered job
-names the installed binary, never a repository checkout, because the reaper
+names the installed binary, never a project checkout, because the reaper
 outlives any one working copy. That property is enforced, not aspirational:
-rendering refuses a binary that lives inside a git checkout — including a
-`.venv` created inside this clone — so install somewhere durable first (a venv
-outside the repository, or `pipx install .`).
+`render_plist` refuses a binary that resolves inside a **project** git working
+tree (primary checkout or linked worktree), including a `.venv` created under
+this clone. Machine install roots (Homebrew, pipx, `/usr`, `~/.local`) are
+allowed even when they happen to be git repositories themselves. Install
+somewhere durable first and pass it with `--bin /absolute/path/to/cinderwell`.
 
 **The reaper gets no private path.** It runs the ordinary teardown, guards and
 all, and authorizes itself by writing an ordinary approval artifact naming the
@@ -410,7 +412,7 @@ cinderwell/
 examples/
   config.example.json   a complete, synthetic configuration
   mock_teardown.py      the receipt above, generated on demand
-tests/                  341 tests, hermetic (a throwaway HOME per fixture)
+tests/                  342 tests, hermetic (a throwaway HOME per fixture)
 ```
 
 The JSON schemas in `cinderwell/resources/` are the durable contract. The
@@ -419,6 +421,11 @@ and receipt schemas — and a test asserts all three are byte-identical, because
 a contract stated twice is a contract that drifts.
 
 ---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and the CI gate. Security
+reports go through [SECURITY.md](SECURITY.md), not public issues.
 
 ## License
 

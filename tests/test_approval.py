@@ -300,7 +300,7 @@ class AuthorizeTest(unittest.TestCase):
         with self.assertRaises(lifecycle.ApprovalError) as raised:
             lifecycle.authorize(plan(), approval_path=None,
                                 terminal_present=False)
-        self.assertIn("factory approve", str(raised.exception))
+        self.assertIn("cinderwell approve", str(raised.exception))
 
     def test_a_hand_edited_plan_cannot_be_authorized_at_all(self) -> None:
         """Not even at a terminal. The hash is the plan's identity, so a plan
@@ -392,7 +392,7 @@ class TerminalTest(unittest.TestCase):
                 str(Path(directory) / "not-a-device")))
 
     def test_it_asks_dev_tty_and_not_stdin(self) -> None:
-        """`_hybrid-confirm` reads from `/dev/tty`. Asking stdin instead would
+        """The interactive confirm reads from `/dev/tty`. Asking stdin instead would
         answer a different question the moment a recipe redirected it."""
         self.assertIn("/dev/tty", inspect.signature(
             lifecycle.has_controlling_terminal).parameters["path"].default)
@@ -571,7 +571,7 @@ class UnattendedTest(unittest.TestCase):
         self.assertIn("TeardownError", allowed.stderr)
 
     def test_the_environment_cannot_smuggle_authority_in(self) -> None:
-        """There is no HYBRID_APPROVED-style escape hatch.
+        """There is no APPROVED-style environment escape hatch.
 
         Structural, because the tempting fix for an agent that cannot get an
         approval onto disk is an environment variable -- and an environment

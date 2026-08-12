@@ -1,7 +1,7 @@
 """Machine-scoped configuration and state locations (XDG).
 
 Explicit ``--config`` / ``--state`` always win. Defaults follow the XDG Base
-Directory Specification with factory-specific suffixes documented in the plan:
+Directory Specification with package-specific suffixes:
 
 * config: ``$XDG_CONFIG_HOME/cinderwell/config.json``
   (default ``~/.config/cinderwell/config.json``)

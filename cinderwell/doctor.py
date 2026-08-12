@@ -1,6 +1,6 @@
 """Report configuration drift without editing anything.
 
-``factory doctor`` validates the live configuration against the packaged
+``cinderwell doctor`` validates the live configuration against the packaged
 schema, names unrecognised / missing / deprecated fields, and detects a
 previous-layout state tree. It never rewrites a configuration to silence a
 mismatch. Migration on schema-version bump is a separate confirmed path.
@@ -153,7 +153,7 @@ def examine(config_path: Path, *, state_path: Path | None = None) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="cinderwell doctor",
-        description="Validate factory configuration against the installed schema. "
+        description="Validate cinderwell configuration against the installed schema. "
                     "Reports only; does not edit configuration.")
     parser.add_argument("--config", type=Path, default=None,
                         help="configuration file (default: XDG machine path)")
