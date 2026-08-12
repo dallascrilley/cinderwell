@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: tests (python ${{ matrix.python-version }} on ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # No install step on purpose: the suite must pass from a bare checkout
+      # with no dependencies, no credentials, and no network. If this job ever
+      # needs `pip install`, something stopped being hermetic.
+      - name: Run the test suite
+        run: python -m unittest discover -s tests -t tests -v
+
+      - name: Produce a teardown receipt from a mocked run
+        run: python examples/mock_teardown.py
+
+  package:
+    name: package installs and the CLI runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install .
+
+      - name: The installed console script answers
+        run: |
+          cinderwell --help
+          cinderwell doctor --config examples/config.example.json
