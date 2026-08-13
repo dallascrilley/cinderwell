@@ -8,7 +8,7 @@ Requires Python 3.12+ (the suite is also CI-tested on 3.13). No third-party
 packages: the standard library is enough to run the tests.
 
 ```bash
-git clone https://github.com/dallascrilley/cinderwell.git
+git clone https://github.com/dallascrilley/matchbox.git
 cd cinderwell
 python3 -m unittest discover -s tests -t tests
 python3 examples/mock_teardown.py
