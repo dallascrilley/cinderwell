@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report suspected vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/dallascrilley/cinderwell/security/advisories/new),
+[GitHub Security Advisories](https://github.com/dallascrilley/matchbox/security/advisories/new),
 or by email to dallas@dallascrilley.com. Please do not open a public issue for
 a security problem.
 

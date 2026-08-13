@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/dallascrilley/cinderwell/tree/main/cinderwell/resources/config.schema.json",
+  "$id": "https://github.com/dallascrilley/matchbox/tree/main/cinderwell/resources/config.schema.json",
   "title": "Matchbox ephemeral server lifecycle configuration",
   "description": "Non-secret configuration. Secret values are never stored here; only commands that fetch them are. Structural rules live in this schema; semantic rules that a schema cannot express (mutable image names, secret-shaped values, envelope sanity) are enforced in lifecycle.py.",
   "type": "object",
